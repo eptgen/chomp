@@ -30,10 +30,14 @@ function Grid({ numRows, numCols, handlePlay, board }) {
 }
 
 function App() {
-	var numRows = 15;
-	var numCols = 3;
+    const NUM_ROWS_BEGIN = 15;
+    const NUM_COLS_BEGIN = 3;
 	
-	const [board, setBoard] = useState(Array(numRows).fill(Array(numCols).fill(true)));
+    const [numRows, setNumRows] = useState(NUM_ROWS_BEGIN);
+    const [rowInput, setRowInput] = useState("");
+    const [numCols, setNumCols] = useState(NUM_COLS_BEGIN);
+    const [colInput, setColInput] = useState("");
+	const [board, setBoard] = useState(Array(NUM_ROWS_BEGIN).fill(Array(NUM_COLS_BEGIN).fill(true)));
 	
 	function handlePlay(row, col) {
 		var newBoard = [];
@@ -49,17 +53,32 @@ function App() {
 		setBoard(newBoard);
 	}
 	
-	function restart() {
-		setBoard(Array(numRows).fill(Array(numCols).fill(true)));
+	function restart(nr, nc) {
+		setBoard(Array(nr).fill(Array(nc).fill(true)));
 	}
 	
+    function changeBoardSize() {
+        var newNumRows = parseInt(rowInput);
+        var newNumCols = parseInt(colInput);
+        if (!isNaN(newNumRows) && !isNaN(newNumCols)) {
+            setNumRows(newNumRows);
+            setNumCols(newNumCols);
+            restart(newNumRows, newNumCols);
+        }
+    }
+    
 	return (
 		<>
 			<div className="board">
 				<Grid numRows={numRows} numCols={numCols} handlePlay={handlePlay} board={board} />
 			</div>
 			<br />
-			<button onClick={restart}>Reset</button>
+			<button onClick={() => restart(numRows, numCols)}>Reset</button><br />
+            <label for="fname">Number of Rows</label>&nbsp;&nbsp;
+            <input type="text" id="num-rows" onInput={e => setRowInput(e.target.value)}></input>&nbsp;&nbsp;&nbsp;&nbsp;
+            <label for="lname">Number of Columns</label>&nbsp;&nbsp;
+            <input type="text" id="num-cols" onInput={e => setColInput(e.target.value)}></input><br /><br />
+            <button onClick={changeBoardSize}>Change Board Size</button>
 		</>
 	);
 }
