@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import logo from './logo.svg';
 import './App.css';
@@ -28,6 +28,20 @@ function Grid({ numRows, numCols, handlePlay, board }) {
 	</>
 	);
 }
+    
+function Name({ name }) {
+    if (name != "") {
+        return <p>Signed in as {name}</p>;
+    } else {
+        return <p>Not signed in</p>;
+    }
+}
+
+function BoardId({ id }) {
+    return <p>Game Id: {id}</p>;
+}
+
+var stateChecker = null;
 
 function App() {
     const NUM_ROWS_BEGIN = 15;
@@ -38,7 +52,13 @@ function App() {
     const [numCols, setNumCols] = useState(NUM_COLS_BEGIN);
     const [colInput, setColInput] = useState("");
 	const [board, setBoard] = useState(Array(NUM_ROWS_BEGIN).fill(Array(NUM_COLS_BEGIN).fill(true)));
-	
+	const [nameInput, setNameInput] = useState("");
+    const [name, setName] = useState("");
+    const [boardId, setBoardId] = useState("");
+    const [boardIdInput, setBoardIdInput] = useState("");
+    
+    /*
+    // the "single player" way to handle the game
 	function handlePlay(row, col) {
 		var newBoard = [];
 		for (var i = 0; i < board.length; i++) {
@@ -51,6 +71,49 @@ function App() {
 			}
 		}
 		setBoard(newBoard);
+	}
+    */
+    
+    function handlePlay(row, col) {
+        var boardToPlay = parseInt(boardId);
+        if (!isNaN(boardToPlay)) {
+            var myHeaders = new Headers();
+            myHeaders.append("Content-Type", "application/json");
+            var raw = JSON.stringify({
+                "type": "player_clicked",
+                "row": row,
+                "col": col,
+                "id": boardToPlay,
+                "name": name
+            });
+            var requestOptions = {
+                method: 'POST',
+                headers: myHeaders,
+                body: raw,
+                redirect: 'follow'
+            };
+            fetch("https://fz8cl5nzi9.execute-api.us-east-2.amazonaws.com/dev", requestOptions)
+            .then(response => {
+                if (response.status == 200) {
+                    return response.text();
+                } else {
+                    return "";
+                }
+            })
+            .then(result => {
+                var details = JSON.parse(result);
+                // console.log(details);
+                if (details.statusCode == 200) {
+                    var resObj = JSON.parse(details["body"]);
+                    setBoard(resObj["board"]);
+                    var winner = resObj["winner"];
+                    if (winner != 2) {
+                        setBoardId("");
+                    }
+                }
+            })
+            .catch(error => console.log('error', error));
+        }
 	}
 	
 	function restart(nr, nc) {
@@ -67,6 +130,136 @@ function App() {
         }
     }
     
+    function startGame() {
+        if (name != "") {
+            var myHeaders = new Headers();
+            myHeaders.append("Content-Type", "application/json");
+            var raw = JSON.stringify({
+                "type": "new_game",
+                "host": name,
+                "num_rows": numRows,
+                "num_cols": numCols,
+                "settings_first": 0
+            });
+            var requestOptions = {
+                method: 'POST',
+                headers: myHeaders,
+                body: raw,
+                redirect: 'follow'
+            };
+            fetch("https://fz8cl5nzi9.execute-api.us-east-2.amazonaws.com/dev", requestOptions)
+            .then(response => {
+                if (response.status == 200) {
+                    return response.text();
+                } else {
+                    alert("error: " + response.text());
+                }
+            })
+            .then(result => {
+                var details = JSON.parse(result);
+                var idObj = JSON.parse(details["body"]);
+                setBoardId(idObj["id"].toString());
+            })
+            .catch(error => console.log('error', error));
+        }
+    }
+    
+    function signIn() {
+        var myHeaders = new Headers();
+        myHeaders.append("Content-Type", "application/json");
+        var raw = JSON.stringify({
+            "type": "sign_in",
+            "name": nameInput
+        });
+        var requestOptions = {
+            method: 'POST',
+            headers: myHeaders,
+            body: raw,
+            redirect: 'follow'
+        };
+        fetch("https://fz8cl5nzi9.execute-api.us-east-2.amazonaws.com/dev", requestOptions)
+        .then(response => {
+            if (response.status == 200) {
+                setName(nameInput);
+            } else {
+                alert("error: " + response.text());
+            }
+        })
+        .catch(error => console.log('error', error));
+    }
+    
+    function joinGame() {
+        var boardToJoin = parseInt(boardIdInput);
+        if (!isNaN(boardToJoin)) {
+            var myHeaders = new Headers();
+            myHeaders.append("Content-Type", "application/json");
+            var raw = JSON.stringify({
+                "type": "join_game",
+                "id": boardToJoin,
+                "guest": name
+            });
+            var requestOptions = {
+                method: 'POST',
+                headers: myHeaders,
+                body: raw,
+                redirect: 'follow'
+            };
+            fetch("https://fz8cl5nzi9.execute-api.us-east-2.amazonaws.com/dev", requestOptions)
+            .then(response => {
+                if (response.status == 200) {
+                    setBoardId(boardIdInput);
+                } else {
+                    alert("error: " + response.text());
+                }
+            })
+            .catch(error => console.log('error', error));
+        }
+    }
+    
+    useEffect(() => {
+        clearInterval(stateChecker);
+        stateChecker = setInterval(() => {
+            var boardToGet = parseInt(boardId);
+            if (!isNaN(boardToGet)) {
+                // console.log(boardToGet);
+                var myHeaders = new Headers();
+                myHeaders.append("Content-Type", "application/json");
+                var raw = JSON.stringify({
+                    "type": "get_board_state",
+                    "id": boardToGet
+                });
+                var requestOptions = {
+                    method: 'POST',
+                    headers: myHeaders,
+                    body: raw,
+                    redirect: 'follow'
+                };
+                fetch("https://fz8cl5nzi9.execute-api.us-east-2.amazonaws.com/dev", requestOptions)
+                .then(response => {
+                    if (response.status == 200) {
+                        return response.text();
+                    } else {
+                        alert("error: " + response.text());
+                    }
+                })
+                .then(result => {
+                    var details = JSON.parse(result);
+                    // console.log(details["body"]);
+                    var resObj = JSON.parse(details["body"]);
+                    var newBoard = resObj["board"];
+                    setBoard(newBoard);
+                    setNumRows(newBoard.length);
+                    setNumCols(newBoard[0].length);
+                    var winner = resObj["winner"];
+                    if (winner != 2) {
+                        setBoardId("");
+                    }
+                })
+                .catch(error => console.log('error', error));
+            }
+        }, 500);
+    }, [boardId]);
+    
 	return (
 		<>
 			<div className="board">
@@ -78,7 +271,14 @@ function App() {
             <input type="text" id="num-rows" onInput={e => setRowInput(e.target.value)}></input>&nbsp;&nbsp;&nbsp;&nbsp;
             <label for="lname">Number of Columns</label>&nbsp;&nbsp;
             <input type="text" id="num-cols" onInput={e => setColInput(e.target.value)}></input><br /><br />
-            <button onClick={changeBoardSize}>Change Board Size</button>
+            <button onClick={changeBoardSize}>Change Board Size</button><br />
+            <button onClick={startGame}>Start Game</button><br /><br />
+            <input type="text" id="join-game" onInput={e => setBoardIdInput(e.target.value)}></input>
+            <button onClick={joinGame}>Join Game</button><br />
+            <input type="text" id="sign-in" onInput={e => setNameInput(e.target.value)}></input>
+            <button onClick={signIn}>Sign In</button><br />
+            <Name name={name} />
+            <BoardId id={boardId} />
 		</>
 	);
 }
